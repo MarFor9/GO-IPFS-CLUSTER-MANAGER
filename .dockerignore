@@ -1,0 +1,8 @@
+.git/
+.github/
+charts/
+scripts/
+.dockerignore
+.gitignore
+Dockerfile
+*.md

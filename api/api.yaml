@@ -1,0 +1,303 @@
+openapi: 3.1.0
+info:
+  title: CLUSTER MANAGER API
+  description: |
+    Documentation for the IPFS Cluster Manager API.
+  version: 1.0.0
+
+servers:
+  - description: Local
+    url: http://localhost:8090
+
+tags:
+  - name: IPFS cluster
+    description: Operations about ipfs cluster
+
+paths:
+  /health:
+    get:
+      summary: Check if the service is up
+      operationId: Check
+      tags:
+        - IPFS cluster
+      responses:
+        '200':
+          description: OK
+
+  /api/v0/add:
+    post:
+      summary: Add file to IPFS cluster
+      operationId: AddFile
+      tags:
+        - IPFS cluster
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - hash
+                properties:
+                  hash:
+                    type: string
+        '500':
+          $ref: '#/components/responses/500'
+
+  /api/v0/cat:
+    post:
+      summary: Get file from IPFS cluster
+      operationId: GetFile
+      tags:
+        - IPFS cluster
+      parameters:
+        - in: query
+          name: arg
+          required: true
+          description: The CID of the file to retrieve.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '500':
+          $ref: '#/components/responses/500'
+
+  /api/v0/pins:
+    get:
+      summary: Get all pinned files from IPFS cluster
+      operationId: GetPinnedFiles
+      tags:
+        - IPFS cluster
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pin'
+        '400':
+          $ref: '#/components/responses/400'
+        '500':
+          $ref: '#/components/responses/500'
+
+
+  /api/v0/clusterNodePair:
+    post:
+      summary: Add a new IPFS cluster and node URL pair to the whitelist
+      operationId: AddClusterNodePair
+      tags:
+        - IPFS cluster
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - clusterUrl
+                - nodeUrl
+              properties:
+                clusterUrl:
+                  type: string
+                nodeUrl:
+                  type: string
+      responses:
+        '200':
+          description: OK
+        '204':
+          description: No Content
+        '400':
+          $ref: '#/components/responses/400'
+        '500':
+          $ref: '#/components/responses/500'
+
+  /status:
+    get:
+      summary: Healthcheck
+      operationId: GetStatus
+      tags:
+        - IPFS cluster
+      responses:
+        '200':
+          description: Healthcheck response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IPFSHealthCheckResponse'
+        '500':
+          $ref: '#/components/responses/500'
+
+components:
+  schemas:
+    IpfsClusterAddResponse:
+      type: object
+      required:
+        - name
+        - cid
+        - size
+        - allocations
+      properties:
+        name:
+          type: string
+        cid:
+          type: string
+        size:
+          type: integer
+        allocations:
+          type: array
+          items:
+            type: string
+
+    Status:
+      type: string
+      enum:
+        - Alive
+        - Down
+
+    IPFSHealthCheckResponse:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClusterNodePairStatus'
+
+    ClusterNodePairStatus:
+      type: object
+      required:
+        - cluster
+        - node
+      properties:
+        cluster:
+          $ref: '#/components/schemas/IPFSStatus'
+        node:
+          $ref: '#/components/schemas/IPFSStatus'
+
+    IPFSStatus:
+      type: object
+      required:
+        - url
+        - status
+        - responseTime
+      properties:
+        url:
+          type: string
+        status:
+          $ref: '#/components/schemas/Status'
+        responseTime:
+          type: string
+
+    Pin:
+      type: object
+      required:
+        - cid
+        - name
+        - allocations
+        - origins
+        - created
+        - peer_map
+      properties:
+        cid:
+          type: string
+        name:
+          type: string
+        allocations:
+          type: array
+          items:
+            type: string
+        origins:
+          type: array
+          items:
+            type: string
+        created:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties: true
+        peer_map:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/PeerStatus'
+
+    PeerStatus:
+      type: object
+      required:
+        - peername
+        - ipfs_peer_id
+        - ipfs_peer_addresses
+        - status
+        - timestamp
+        - attempt_count
+        - priority_pin
+      properties:
+        peername:
+          type: string
+        ipfs_peer_id:
+          type: string
+        ipfs_peer_addresses:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        error:
+          type: string
+        attempt_count:
+          type: integer
+        priority_pin:
+          type: boolean
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+
+    GenericErrorMessage:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          example: 'Something happen'
+
+  responses:
+    '400':
+      description: 'Bad Request'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/GenericErrorMessage'
+    '500':
+      description: 'Internal Server error'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/GenericErrorMessage'
